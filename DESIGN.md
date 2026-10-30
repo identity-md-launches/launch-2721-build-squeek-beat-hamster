@@ -61,7 +61,7 @@ Content-driven breakpoints:
 
 The playfield uses viewport-aware clamped heights and a 250 px mobile minimum. At 350 px and below, the paused upgrade playfield grows to 380 px so both complete upgrade descriptions and actions remain visible. Controls stay in normal flow, rather than obscuring play as sticky chrome. Dialogs use at most `100dvh - 24px` on phones, scroll internally, and have contained overscroll. Only the touch pads suppress scroll gestures. Main content receives programmatic focus without a decorative box around the whole page; interactive controls retain visible focus rings.
 
-Browser checks covered 320, 390, 800 and 1440 px. Upgrade/result reflow was also checked at 320 px. Native browser zoom, localization expansion and RTL layouts were not exercised.
+Browser checks covered 320, 390, 799, 800 and 1440 px. Pause retains its accessible name, "Pause run", when its visible text is hidden below 800 px. Upgrade/result reflow was also checked at 320 px. Native browser zoom, localization expansion and RTL layouts were not exercised.
 
 ## Elevation & Depth
 
@@ -83,7 +83,7 @@ The main scene/cabinet uses a 20 px radius. Phone cabinets and companion scenes 
 | `.tour-scene`, `hamsterScene()` / `src/art.ts` | Original wheel illustration, with garden, sunset and stars. A small companion survives mobile reflow. FEVER adds a gold celebration and wheel rotation. |
 | `.scoreboard`, `.fever-row`, `.act-progress` / `renderGame()` | Stable numeric alignment, labelled energy progressbar, explicit ready/active FEVER state and remaining seconds. The run remains 60 active seconds. |
 | `.playfield`, `drawLanes()`, `drawNote()` | Two lanes, horizontal targets, gold flower shapes, immediate text/score feedback. Canvas rendering is independent from the scoring engine. Authored phrase starts align to the backing pulse, with half-beat or two-thirds-beat bursts constrained to at least 250 ms. |
-| `.pad` | Large touch controls with A/L labels; pointerdown judges once, touch compatibility clicks are filtered, keyboard/assistive clicks still work. Default, hover, press and focus states. |
+| `.pad` | Large touch controls with A/L labels; pointerdown judges once, touch compatibility clicks are filtered. Native Enter/Space activation uses the same held-key tracking as A/L to suppress repeated keydowns until keyup; click-only assistive activation remains available. Default, hover, press and focus states. |
 | `.game-overlay` | Three-beat countdown, paused state or upgrade decision. Pauses freeze the clock and decorative celebration. Upgrade buttons give exact effects and retain focus within the current choice area. |
 | Native `dialog` / `openDialog()` | Tutorial, settings, seed rule and project rules. Native focus containment, Escape dismissal and trigger restoration; background is inert while open. |
 | `.live-note` / `loadLive()` | Pending, validated data, stale, timeout, schema/network error and retry/switch-to-Practice states. No fake measurements. |

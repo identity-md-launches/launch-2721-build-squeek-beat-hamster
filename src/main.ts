@@ -130,7 +130,7 @@ function beginRun() {
 function renderGame() {
   if (!game) return;
   main().className = 'game-main';
-  main().innerHTML = `<div class="game-title-row"><div><span class="game-mode">${names[game.config.mode]} · ${Math.round(game.config.bpm)} BPM${game.config.difficulty === 'relaxed' ? ' · Relaxed' : ''}</span><h1>${acts[game.act]}</h1></div><div class="game-actions"><button class="utility" data-action="pause">${icon('pause')}<span>Pause</span></button><button class="utility icon-button" data-action="restart" aria-label="Restart run">${icon('restart')}</button><button class="utility icon-button" data-action="quit" aria-label="Quit run">${icon('close')}</button></div></div>
+  main().innerHTML = `<div class="game-title-row"><div><span class="game-mode">${names[game.config.mode]} · ${Math.round(game.config.bpm)} BPM${game.config.difficulty === 'relaxed' ? ' · Relaxed' : ''}</span><h1>${acts[game.act]}</h1></div><div class="game-actions"><button class="utility" data-action="pause" aria-label="Pause run">${icon('pause')}<span>Pause</span></button><button class="utility icon-button" data-action="restart" aria-label="Restart run">${icon('restart')}</button><button class="utility icon-button" data-action="quit" aria-label="Quit run">${icon('close')}</button></div></div>
   <div class="game-layout"><section class="arcade" aria-label="Two-lane rhythm game"><div class="scoreboard"><div><span>Score</span><strong id="score">${number(game.score)}</strong></div><div><span>Accuracy</span><strong id="accuracy">${game.accuracy.toFixed(1)}<small>%</small></strong></div><div><span>Combo</span><strong id="combo">${game.combo}<small>×</small></strong></div><div><span>Remaining</span><strong id="remaining">${Math.ceil((RUN_MS - game.time) / 1000)}<small>s</small></strong></div></div>
   <div class="fever-row"><span>${icon('bolt')} <strong id="fever-label">FEVER</strong></span><div class="energy-track" role="progressbar" aria-label="FEVER energy" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${game.energy}"><div id="energy-fill"></div></div><span id="fever-value">${Math.floor(game.energy)}%</span></div>
   <div class="playfield"><canvas id="game-canvas" role="img" aria-label="Notes approach the horizontal hit line. Use A for left and L for right."></canvas><div class="hit-feedback" id="hit-feedback" aria-hidden="true"></div><div class="game-overlay" id="game-overlay"></div><span class="hit-line-label">Hit line</span></div><div class="touch-pads"><button class="pad" data-lane="0" aria-label="Left lane, keyboard A"><kbd>A</kbd><span>Left lane</span></button><button class="pad" data-lane="1" aria-label="Right lane, keyboard L"><kbd>L</kbd><span>Right lane</span></button></div><div class="act-progress" aria-label="Tour progress"><div class="act-labels">${acts.map((a, i) => `<span class="${i === game!.act ? 'active' : ''}">${i + 1}. ${a.split(' ')[0]}</span>`).join('')}</div><div class="progress-track"><div id="run-progress" style="width:${game.progress * 100}%"></div></div></div></section>
@@ -326,6 +326,13 @@ document.addEventListener('keydown', e => {
   const interactive = target.closest('input, textarea, select, button, a, summary, [contenteditable="true"]');
   if (e.key === 'Escape' && screen === 'game' && !document.querySelector<HTMLDialogElement>('#dialog')!.open) { e.preventDefault(); if (phase === 'running' || phase === 'countdown') pause(); return; }
   const key = e.key.toLowerCase();
+  if ((key === 'enter' || key === ' ') && target.closest('[data-lane], [data-tutorial-lane]')) {
+    // Keep the first native button activation; suppress held-key clicks just like A/L.
+    // Clicks without keyboard events (pointer or assistive activation) stay independent.
+    if (e.repeat || heldKeys.has(key)) e.preventDefault();
+    else heldKeys.add(key);
+    return;
+  }
   if ((key !== 'a' && key !== 'l') || e.repeat || heldKeys.has(key) || e.altKey || e.ctrlKey || e.metaKey || interactive) return;
   const dialog = document.querySelector<HTMLDialogElement>('#dialog')!;
   if (dialog.open && document.querySelector('#tutorial-canvas')) { e.preventDefault(); heldKeys.add(key); tutorialHit(key === 'a' ? 0 : 1); }

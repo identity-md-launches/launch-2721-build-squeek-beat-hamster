@@ -23,9 +23,79 @@ const results = [];
 const report = (name, details = '') => { results.push({ name, passed: true, details }); console.log(`PASS ${name}${details ? `: ${details}` : ''}`); };
 const shots = 'artifacts/screenshots';
 await mkdir(shots, { recursive: true });
+
+async function validatePadInputs(browser, browserName) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  try {
+    const page = await context.newPage();
+    const errors = [], failed = [];
+    page.on('pageerror', e => errors.push(e.message));
+    page.on('response', r => { if (r.url().startsWith(url) && r.status() >= 400) failed.push(r.status()); });
+    const date = new Date('2026-10-30T12:00:00Z');
+    await page.clock.install({ time: date }); await page.clock.pauseAt(date);
+    await page.goto(url);
+    await page.locator('[data-action="start"]').click(); await page.locator('[data-action="skip"]').click();
+    await page.clock.runFor(2100);
+    for (const width of [320, 390, 799, 800, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(await page.getByRole('button', { name: 'Pause run', exact: true }).count(), 1);
+      assert.match(await page.locator('[data-action="pause"]').ariaSnapshot(), /button "Pause run"/);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    }
+    report(`${browserName}: Pause has an accessible name at 320 / 390 / 799 / 800 / 1440`);
+    const chart = makeChart({ mode: 'practice', difficulty: 'standard', bpm: 90, date: '2026-10-30', offset: 0 });
+    const hud = async () => ({ score: await page.locator('#score').textContent(), accuracy: await page.locator('#accuracy').textContent(), combo: await page.locator('#combo').textContent(), energy: await page.locator('#fever-value').textContent() });
+    const score = async () => Number((await page.locator('#score').textContent()).replaceAll(',', ''));
+    const toActive = async t => {
+      const current = await page.locator('#run-progress').evaluate(e => parseFloat(e.style.width) / 100 * 60000);
+      if (t > current) await page.clock.runFor(t - current);
+    };
+    for (const width of [390, 1440]) for (const lane of [0, 1]) for (const key of ['Enter', 'Space']) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.locator('[data-action="restart"]').click(); await page.clock.runFor(2100);
+      const notes = chart.filter(n => n.act === 0 && n.lane === lane);
+      const pad = page.locator(`[data-lane="${lane}"]`);
+      await toActive(notes[0].at); await pad.focus();
+      const before = await score();
+      await page.keyboard.down(key); const afterDown = await hud();
+      await page.keyboard.down(key); assert.deepEqual(await hud(), afterDown, `${key}: repeat at the hit line must not judge again`);
+      if (key === 'Space') await page.keyboard.up(key);
+      assert.equal(await score() - before, notes[0].gold ? 250 : 100);
+
+      // A held Enter must leave the next note available for a fresh physical press.
+      await toActive(notes[1].at);
+      if (key === 'Space') await page.keyboard.down(key);
+      const beforeLaterRepeat = await hud();
+      await page.keyboard.down(key); assert.deepEqual(await hud(), beforeLaterRepeat, `${key}: held repeat must not consume a later note`);
+      await page.keyboard.up(key);
+      if (key === 'Enter') await page.keyboard.press(key);
+      assert.equal(await score() - Number(beforeLaterRepeat.score.replaceAll(',', '')), notes[1].gold ? 250 : 100);
+
+      // Click-only activation used by assistive tools and pointer input remain independent.
+      await toActive(notes[2].at); const beforeAssistive = await score();
+      await pad.evaluate(e => e.click());
+      assert.equal(await score() - beforeAssistive, notes[2].gold ? 250 : 100);
+      await toActive(notes[3].at); const beforeTouch = await score();
+      const box = await pad.boundingBox();
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      assert.equal(await score() - beforeTouch, notes[3].gold ? 250 : 100);
+      const afterTouch = await hud();
+      await pad.dispatchEvent('click', { detail: 1 }); assert.deepEqual(await hud(), afterTouch);
+      if (width === 390 && lane === 1 && key === 'Enter') await page.screenshot({ path: `${shots}/pad-focus-390.png` });
+    }
+    await page.locator('[data-action="pause"]').focus(); await page.keyboard.press('Enter');
+    assert.equal(await page.locator('[data-action="resume"]').isVisible(), true);
+    await page.locator('[data-action="quit"]').first().focus(); await page.keyboard.press('Space');
+    assert.equal(await page.locator('[data-action="start"]').isVisible(), true);
+    assert.deepEqual(errors, []); assert.deepEqual(failed, []);
+    report(`${browserName}: focused pads suppress held Enter/Space on both lanes at 390 and 1440; fresh presses, assistive clicks, touch and menu keys work`);
+  } finally { await context.close(); }
+}
+
 const browser = await chromium.launch({ headless: true });
 let safari;
 try {
+  await validatePadInputs(browser, 'Chromium');
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
   const page = await context.newPage();
   const errors = [], failed = [];
@@ -203,6 +273,7 @@ try {
   try { safari = await webkit.launch({ headless: true }); }
   catch { results.push({ name: 'WebKit primary flow', passed: false, limitation: 'WebKit could not launch because required browser runtime libraries are unavailable.' }); console.log('LIMITATION WebKit browser runtime could not launch.'); }
   if (safari) {
+    await validatePadInputs(safari, 'WebKit');
     const safariPage = await safari.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
     await safariPage.goto(url); await safariPage.locator('[data-action="start"]').click(); await safariPage.locator('[data-action="skip"]').click(); await safariPage.waitForTimeout(2100); await safariPage.locator('[data-action="pause"]').click(); assert.equal(await safariPage.locator('[data-action="resume"]').isVisible(), true); report('WebKit: primary flow opens, runs, and pauses at 390');
   }
