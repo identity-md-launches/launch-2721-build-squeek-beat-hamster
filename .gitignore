@@ -1,0 +1,10 @@
+# Explicit submission path budget: 0 bytes from dependencies, caches and scratch outputs.
+# Runtime source, required local assets, package-lock.json and dist/ remain deliverable.
+**/node_modules/
+**/.vite/
+**/.cache/
+**/.npm/
+**/.playwright/
+**/playwright-report/
+**/test-results/
+test/scratch/

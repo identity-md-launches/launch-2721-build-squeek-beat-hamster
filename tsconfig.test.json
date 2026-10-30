@@ -1,0 +1,5 @@
+{
+ "extends": "./tsconfig.json",
+ "compilerOptions": { "noEmit": false, "outDir": "test/scratch/compiled", "rootDir": "src" },
+ "include": ["src/engine.ts", "src/live.ts", "src/records.ts"]
+}
